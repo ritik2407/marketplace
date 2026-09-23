@@ -12,8 +12,16 @@
                     <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
                     Popular Cities:
                 </span>
+                @php
+                    $currentCitySlug = request('city')
+                        ?? (request()->routeIs('city.show') || request()->routeIs('city.category.show') ? request()->route('city_slug') : null)
+                        ?? ($selectedCity->slug ?? null);
+                @endphp
                 @foreach($navCities as $c)
-                    <a href="{{ route('city.show', $c->slug) }}" class="hover:text-teal-300 transition-colors {{ request('city') === $c->slug ? 'text-teal-300 font-semibold' : 'text-slate-300' }}">
+                    @php
+                        $isNavCityActive = ($currentCitySlug === $c->slug) || (is_array(request('city')) && in_array($c->slug, request('city')));
+                    @endphp
+                    <a href="{{ route('city.show', $c->slug) }}" class="hover:text-teal-300 transition-colors {{ $isNavCityActive ? 'text-teal-300 font-extrabold underline decoration-teal-400 decoration-2 underline-offset-4' : 'text-slate-300' }}">
                         {{ $c->name }}
                     </a>
                 @endforeach
@@ -21,9 +29,9 @@
             <div class="flex items-center space-x-4 text-slate-300">
                 <span class="text-xs">India's Trusted Marketplace</span>
                 <span>•</span>
-                <a href="{{ route('listings.index', ['type' => 'product']) }}" class="hover:text-white">Products</a>
+                <a href="{{ route('listings.index', ['type' => 'product']) }}" class="hover:text-white {{ request('type') === 'product' ? 'text-teal-300 font-bold' : '' }}">Products</a>
                 <span>•</span>
-                <a href="{{ route('listings.index', ['type' => 'service']) }}" class="hover:text-white">Services</a>
+                <a href="{{ route('listings.index', ['type' => 'service']) }}" class="hover:text-white {{ request('type') === 'service' ? 'text-teal-300 font-bold' : '' }}">Services</a>
             </div>
         </div>
     </div>
@@ -136,14 +144,22 @@
         </div>
 
         <!-- Category Bar Sub-Menu -->
+        @php
+            $currentCategorySlug = request('category') 
+                ?? (request()->routeIs('category.show') || request()->routeIs('subcategory.show') || request()->routeIs('city.category.show') ? request()->route('category_slug') : null)
+                ?? ($selectedCategory->slug ?? null);
+        @endphp
         <div class="flex items-center justify-between overflow-x-auto py-2.5 border-t border-slate-100 text-sm no-scrollbar">
             <div class="flex items-center space-x-6 min-w-max">
-                <a href="{{ route('listings.index') }}" class="font-bold text-[#002f34] flex items-center gap-1 hover:text-teal-600">
+                <a href="{{ route('listings.index') }}" class="font-bold flex items-center gap-1 transition-colors {{ empty($currentCategorySlug) ? 'text-teal-700 font-extrabold border-b-2 border-teal-700 pb-0.5' : 'text-slate-700 hover:text-teal-600' }}">
                     <span>ALL CATEGORIES</span>
                 </a>
 
                 @foreach($navCategories as $cat)
-                    <a href="{{ route('category.show', $cat->slug) }}" class="text-slate-600 hover:text-teal-600 font-medium text-xs transition-colors {{ request()->is('category/' . $cat->slug . '*') ? 'text-teal-600 font-bold' : '' }}">
+                    @php
+                        $isNavCatActive = ($currentCategorySlug === $cat->slug) || (is_array(request('category')) && in_array($cat->slug, request('category')));
+                    @endphp
+                    <a href="{{ route('category.show', $cat->slug) }}" class="text-xs transition-colors py-0.5 {{ $isNavCatActive ? 'text-teal-700 font-extrabold border-b-2 border-teal-700' : 'text-slate-600 hover:text-teal-600 font-medium' }}">
                         {{ $cat->name }}
                     </a>
                 @endforeach

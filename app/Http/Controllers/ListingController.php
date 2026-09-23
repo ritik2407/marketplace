@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Country;
@@ -39,6 +40,10 @@ class ListingController extends Controller
             'min_price',
             'max_price',
             'condition',
+            'is_negotiable',
+            'is_featured',
+            'with_photos',
+            'posted_within',
             'sort',
         ]);
 
@@ -53,7 +58,24 @@ class ListingController extends Controller
         $states = State::orderBy('name')->get();
 
         $selectedCategory = ! empty($filters['category']) ? Category::where('slug', $filters['category'])->first() : null;
+        if (! $selectedCategory && ! empty($filters['category_id']) && ! is_array($filters['category_id'])) {
+            $selectedCategory = Category::find($filters['category_id']);
+        }
+
+        $selectedSubcategory = ! empty($filters['subcategory']) ? Subcategory::where('slug', $filters['subcategory'])->first() : null;
+        if (! $selectedSubcategory && ! empty($filters['subcategory_id']) && ! is_array($filters['subcategory_id'])) {
+            $selectedSubcategory = Subcategory::find($filters['subcategory_id']);
+        }
+
         $selectedCity = ! empty($filters['city']) ? City::where('slug', $filters['city'])->first() : null;
+        if (! $selectedCity && ! empty($filters['city_id']) && ! is_array($filters['city_id'])) {
+            $selectedCity = City::find($filters['city_id']);
+        }
+
+        $selectedState = ! empty($filters['state_id']) && ! is_array($filters['state_id']) ? State::find($filters['state_id']) : ($selectedCity ? $selectedCity->state : null);
+
+        $cities = $selectedState ? City::where('state_id', $selectedState->id)->orderBy('name')->get() : $popularCities;
+        $areas = $selectedCity ? Area::where('city_id', $selectedCity->id)->orderBy('name')->get() : collect();
 
         $pageTitle = 'All Marketplace Listings';
         if ($selectedCity && $selectedCategory) {
@@ -64,14 +86,21 @@ class ListingController extends Controller
             $pageTitle = "Listings in {$selectedCity->name}";
         }
 
+        $activeFilterPills = $this->buildActiveFilterPills($filters, $selectedCategory, $selectedSubcategory, $selectedCity, $selectedState);
+
         return view('listings.index', compact(
             'listings',
             'categories',
             'popularCities',
             'states',
+            'cities',
+            'areas',
             'filters',
             'selectedCategory',
+            'selectedSubcategory',
             'selectedCity',
+            'selectedState',
+            'activeFilterPills',
             'pageTitle'
         ));
     }
@@ -99,19 +128,33 @@ class ListingController extends Controller
         $popularCities = City::where('is_popular', true)->orderBy('name')->get();
         $states = State::orderBy('name')->get();
 
+        $selectedCategory = $category;
+        $selectedSubcategory = $subcategory;
+        $selectedCity = ! empty($filters['city']) ? City::where('slug', $filters['city'])->first() : null;
+        $selectedState = ! empty($filters['state_id']) && ! is_array($filters['state_id']) ? State::find($filters['state_id']) : ($selectedCity ? $selectedCity->state : null);
+
+        $cities = $selectedState ? City::where('state_id', $selectedState->id)->orderBy('name')->get() : $popularCities;
+        $areas = $selectedCity ? Area::where('city_id', $selectedCity->id)->orderBy('name')->get() : collect();
+
         $pageTitle = $subcategory ? "{$subcategory->name} in {$category->name}" : "{$category->name} Ads";
 
-        return view('listings.index', [
-            'listings' => $listings,
-            'categories' => $categories,
-            'popularCities' => $popularCities,
-            'states' => $states,
-            'filters' => $filters,
-            'selectedCategory' => $category,
-            'selectedSubcategory' => $subcategory,
-            'selectedCity' => null,
-            'pageTitle' => $pageTitle,
-        ]);
+        $activeFilterPills = $this->buildActiveFilterPills($filters, $selectedCategory, $selectedSubcategory, $selectedCity, $selectedState);
+
+        return view('listings.index', compact(
+            'listings',
+            'categories',
+            'popularCities',
+            'states',
+            'cities',
+            'areas',
+            'filters',
+            'selectedCategory',
+            'selectedSubcategory',
+            'selectedCity',
+            'selectedState',
+            'activeFilterPills',
+            'pageTitle'
+        ));
     }
 
     /**
@@ -135,18 +178,33 @@ class ListingController extends Controller
         $popularCities = City::where('is_popular', true)->orderBy('name')->get();
         $states = State::orderBy('name')->get();
 
+        $selectedCategory = ! empty($filters['category']) ? Category::where('slug', $filters['category'])->first() : null;
+        $selectedSubcategory = ! empty($filters['subcategory']) && $selectedCategory ? Subcategory::where('slug', $filters['subcategory'])->where('category_id', $selectedCategory->id)->first() : null;
+        $selectedCity = $city;
+        $selectedState = $city->state;
+
+        $cities = $selectedState ? City::where('state_id', $selectedState->id)->orderBy('name')->get() : $popularCities;
+        $areas = Area::where('city_id', $selectedCity->id)->orderBy('name')->get();
+
         $pageTitle = "Buy, Sell & Find Services in {$city->name}";
 
-        return view('listings.index', [
-            'listings' => $listings,
-            'categories' => $categories,
-            'popularCities' => $popularCities,
-            'states' => $states,
-            'filters' => $filters,
-            'selectedCategory' => null,
-            'selectedCity' => $city,
-            'pageTitle' => $pageTitle,
-        ]);
+        $activeFilterPills = $this->buildActiveFilterPills($filters, $selectedCategory, $selectedSubcategory, $selectedCity, $selectedState);
+
+        return view('listings.index', compact(
+            'listings',
+            'categories',
+            'popularCities',
+            'states',
+            'cities',
+            'areas',
+            'filters',
+            'selectedCategory',
+            'selectedSubcategory',
+            'selectedCity',
+            'selectedState',
+            'activeFilterPills',
+            'pageTitle'
+        ));
     }
 
     /**
@@ -172,18 +230,162 @@ class ListingController extends Controller
         $popularCities = City::where('is_popular', true)->orderBy('name')->get();
         $states = State::orderBy('name')->get();
 
+        $selectedCategory = $category;
+        $selectedSubcategory = ! empty($filters['subcategory']) ? Subcategory::where('slug', $filters['subcategory'])->where('category_id', $category->id)->first() : null;
+        $selectedCity = $city;
+        $selectedState = $city->state;
+
+        $cities = $selectedState ? City::where('state_id', $selectedState->id)->orderBy('name')->get() : $popularCities;
+        $areas = Area::where('city_id', $selectedCity->id)->orderBy('name')->get();
+
         $pageTitle = "{$category->name} in {$city->name}";
 
-        return view('listings.index', [
-            'listings' => $listings,
-            'categories' => $categories,
-            'popularCities' => $popularCities,
-            'states' => $states,
-            'filters' => $filters,
-            'selectedCategory' => $category,
-            'selectedCity' => $city,
-            'pageTitle' => $pageTitle,
-        ]);
+        $activeFilterPills = $this->buildActiveFilterPills($filters, $selectedCategory, $selectedSubcategory, $selectedCity, $selectedState);
+
+        return view('listings.index', compact(
+            'listings',
+            'categories',
+            'popularCities',
+            'states',
+            'cities',
+            'areas',
+            'filters',
+            'selectedCategory',
+            'selectedSubcategory',
+            'selectedCity',
+            'selectedState',
+            'activeFilterPills',
+            'pageTitle'
+        ));
+    }
+
+    /**
+     * Build active filter pills for view rendering.
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildActiveFilterPills(
+        array $filters,
+        ?Category $selectedCategory = null,
+        ?Subcategory $selectedSubcategory = null,
+        ?City $selectedCity = null,
+        ?State $selectedState = null
+    ): array {
+        $pills = [];
+
+        if (! empty($filters['search'])) {
+            $pills[] = [
+                'type' => 'search',
+                'label' => 'Keyword: "'.Str::limit((string) $filters['search'], 25).'"',
+                'param' => 'search',
+            ];
+        }
+
+        if (! empty($filters['type'])) {
+            $pills[] = [
+                'type' => 'type',
+                'label' => 'Type: '.ucfirst((string) $filters['type']),
+                'param' => 'type',
+            ];
+        }
+
+        if ($selectedCategory) {
+            $pills[] = [
+                'type' => 'category',
+                'label' => 'Category: '.$selectedCategory->name,
+                'param' => 'category',
+            ];
+        }
+
+        if ($selectedSubcategory) {
+            $pills[] = [
+                'type' => 'subcategory',
+                'label' => 'Subcategory: '.$selectedSubcategory->name,
+                'param' => 'subcategory',
+            ];
+        }
+
+        if ($selectedState && ! $selectedCity) {
+            $pills[] = [
+                'type' => 'state',
+                'label' => 'State: '.$selectedState->name,
+                'param' => 'state_id',
+            ];
+        }
+
+        if ($selectedCity) {
+            $pills[] = [
+                'type' => 'city',
+                'label' => 'City: '.$selectedCity->name,
+                'param' => 'city',
+            ];
+        }
+
+        if (! empty($filters['min_price']) || ! empty($filters['max_price'])) {
+            $minFormatted = ! empty($filters['min_price']) ? '₹'.number_format((float) $filters['min_price']) : '₹0';
+            $maxFormatted = ! empty($filters['max_price']) ? '₹'.number_format((float) $filters['max_price']) : 'Any';
+            $pills[] = [
+                'type' => 'price',
+                'label' => "Price: {$minFormatted} - {$maxFormatted}",
+                'params' => ['min_price', 'max_price'],
+            ];
+        }
+
+        if (! empty($filters['condition'])) {
+            $conditions = is_array($filters['condition']) ? $filters['condition'] : [$filters['condition']];
+            foreach ($conditions as $cond) {
+                if (empty($cond)) {
+                    continue;
+                }
+                $pills[] = [
+                    'type' => 'condition',
+                    'label' => 'Condition: '.$cond,
+                    'param' => 'condition',
+                    'value' => $cond,
+                ];
+            }
+        }
+
+        if (! empty($filters['is_negotiable'])) {
+            $pills[] = [
+                'type' => 'is_negotiable',
+                'label' => 'Negotiable Only',
+                'param' => 'is_negotiable',
+            ];
+        }
+
+        if (! empty($filters['is_featured'])) {
+            $pills[] = [
+                'type' => 'is_featured',
+                'label' => 'Featured Only',
+                'param' => 'is_featured',
+            ];
+        }
+
+        if (! empty($filters['with_photos'])) {
+            $pills[] = [
+                'type' => 'with_photos',
+                'label' => 'With Photos Only',
+                'param' => 'with_photos',
+            ];
+        }
+
+        if (! empty($filters['posted_within'])) {
+            $dateLabel = match ($filters['posted_within']) {
+                'today', '24h' => 'Last 24 Hours',
+                'week', '7d' => 'Last 7 Days',
+                'month', '30d' => 'Last 30 Days',
+                default => (string) $filters['posted_within'],
+            };
+            $pills[] = [
+                'type' => 'posted_within',
+                'label' => 'Posted: '.$dateLabel,
+                'param' => 'posted_within',
+            ];
+        }
+
+        return $pills;
     }
 
     /**

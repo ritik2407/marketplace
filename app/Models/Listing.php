@@ -144,12 +144,14 @@ class Listing extends Model
     }
 
     /**
-     * Dynamic filtering scope.
+     * Dynamic filtering scope supporting multiple simultaneous filters.
+     *
+     * @param  array<string, mixed>  $filters
      */
     public function scopeFilter(Builder $query, array $filters): Builder
     {
         if (! empty($filters['search'])) {
-            $search = $filters['search'];
+            $search = trim((string) $filters['search']);
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
@@ -157,60 +159,139 @@ class Listing extends Model
         }
 
         if (! empty($filters['type'])) {
-            $query->where('type', $filters['type']);
+            if (is_array($filters['type'])) {
+                $query->whereIn('type', $filters['type']);
+            } else {
+                $query->where('type', $filters['type']);
+            }
         }
 
         if (! empty($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
+            if (is_array($filters['category_id'])) {
+                $query->whereIn('category_id', array_filter($filters['category_id']));
+            } else {
+                $query->where('category_id', $filters['category_id']);
+            }
         }
 
         if (! empty($filters['category'])) {
             $categorySlug = $filters['category'];
-            $query->whereHas('category', function ($q) use ($categorySlug) {
-                $q->where('slug', $categorySlug);
-            });
+            if (is_array($categorySlug)) {
+                $query->whereHas('category', function ($q) use ($categorySlug) {
+                    $q->whereIn('slug', array_filter($categorySlug));
+                });
+            } else {
+                $query->whereHas('category', function ($q) use ($categorySlug) {
+                    $q->where('slug', $categorySlug);
+                });
+            }
         }
 
         if (! empty($filters['subcategory_id'])) {
-            $query->where('subcategory_id', $filters['subcategory_id']);
+            if (is_array($filters['subcategory_id'])) {
+                $query->whereIn('subcategory_id', array_filter($filters['subcategory_id']));
+            } else {
+                $query->where('subcategory_id', $filters['subcategory_id']);
+            }
         }
 
         if (! empty($filters['subcategory'])) {
             $subcategorySlug = $filters['subcategory'];
-            $query->whereHas('subcategory', function ($q) use ($subcategorySlug) {
-                $q->where('slug', $subcategorySlug);
-            });
+            if (is_array($subcategorySlug)) {
+                $query->whereHas('subcategory', function ($q) use ($subcategorySlug) {
+                    $q->whereIn('slug', array_filter($subcategorySlug));
+                });
+            } else {
+                $query->whereHas('subcategory', function ($q) use ($subcategorySlug) {
+                    $q->where('slug', $subcategorySlug);
+                });
+            }
+        }
+
+        if (! empty($filters['state_id'])) {
+            if (is_array($filters['state_id'])) {
+                $query->whereIn('state_id', array_filter($filters['state_id']));
+            } else {
+                $query->where('state_id', $filters['state_id']);
+            }
         }
 
         if (! empty($filters['city_id'])) {
-            $query->where('city_id', $filters['city_id']);
+            if (is_array($filters['city_id'])) {
+                $query->whereIn('city_id', array_filter($filters['city_id']));
+            } else {
+                $query->where('city_id', $filters['city_id']);
+            }
         }
 
         if (! empty($filters['city'])) {
             $citySlug = $filters['city'];
-            $query->whereHas('city', function ($q) use ($citySlug) {
-                $q->where('slug', $citySlug);
-            });
-        }
-
-        if (! empty($filters['state_id'])) {
-            $query->where('state_id', $filters['state_id']);
+            if (is_array($citySlug)) {
+                $query->whereHas('city', function ($q) use ($citySlug) {
+                    $q->whereIn('slug', array_filter($citySlug));
+                });
+            } else {
+                $query->whereHas('city', function ($q) use ($citySlug) {
+                    $q->where('slug', $citySlug);
+                });
+            }
         }
 
         if (! empty($filters['area_id'])) {
-            $query->where('area_id', $filters['area_id']);
+            if (is_array($filters['area_id'])) {
+                $query->whereIn('area_id', array_filter($filters['area_id']));
+            } else {
+                $query->where('area_id', $filters['area_id']);
+            }
         }
 
-        if (! empty($filters['min_price'])) {
+        if (isset($filters['min_price']) && $filters['min_price'] !== '' && $filters['min_price'] !== null) {
             $query->where('price', '>=', (float) $filters['min_price']);
         }
 
-        if (! empty($filters['max_price'])) {
+        if (isset($filters['max_price']) && $filters['max_price'] !== '' && $filters['max_price'] !== null) {
             $query->where('price', '<=', (float) $filters['max_price']);
         }
 
         if (! empty($filters['condition'])) {
-            $query->where('condition', $filters['condition']);
+            if (is_array($filters['condition'])) {
+                $conditions = array_values(array_filter($filters['condition']));
+                if (! empty($conditions)) {
+                    $query->whereIn('condition', $conditions);
+                }
+            } else {
+                $query->where('condition', $filters['condition']);
+            }
+        }
+
+        if (isset($filters['is_negotiable']) && $filters['is_negotiable'] !== '' && $filters['is_negotiable'] !== null) {
+            $isNegotiable = filter_var($filters['is_negotiable'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isNegotiable !== null) {
+                $query->where('is_negotiable', $isNegotiable);
+            }
+        }
+
+        if (isset($filters['is_featured']) && $filters['is_featured'] !== '' && $filters['is_featured'] !== null) {
+            $isFeatured = filter_var($filters['is_featured'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isFeatured !== null) {
+                $query->where('is_featured', $isFeatured);
+            }
+        }
+
+        if (isset($filters['with_photos']) && $filters['with_photos'] !== '' && $filters['with_photos'] !== null) {
+            $withPhotos = filter_var($filters['with_photos'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($withPhotos) {
+                $query->has('images');
+            }
+        }
+
+        if (! empty($filters['posted_within'])) {
+            match ($filters['posted_within']) {
+                'today', '24h' => $query->where('created_at', '>=', now()->subDay()),
+                'week', '7d' => $query->where('created_at', '>=', now()->subDays(7)),
+                'month', '30d' => $query->where('created_at', '>=', now()->subDays(30)),
+                default => null,
+            };
         }
 
         // Sorting
@@ -220,6 +301,7 @@ class Listing extends Model
             'price_low' => $query->orderBy('price', 'asc'),
             'price_high' => $query->orderBy('price', 'desc'),
             'popular' => $query->orderBy('views_count', 'desc'),
+            'oldest' => $query->orderBy('created_at', 'asc'),
             default => $query->orderBy('created_at', 'desc'),
         };
     }
