@@ -1,58 +1,185 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Marketplace - OLX Style Classifieds Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A modern, full-featured online classifieds and marketplace web application built with **Laravel 12 (PHP 8.3)**, **MySQL**, **Tailwind CSS v4**, and **Laravel Sanctum**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Key Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **User Authentication**: Web session auth + Laravel Sanctum API token authentication (`/api/register`, `/api/login`, `/api/user`).
+- **Post & Browse Ads**:
+  - Products and Services listings with Title, Description, Category, Subcategory, Price (Negotiable toggle), Condition (Brand New, Like New, Good, Fair), and Contact Info (Phone/WhatsApp/Email).
+  - Multi-image uploads with primary cover photo selection and gallery management.
+- **Location Hierarchy & Cascading Filters**:
+  - Country → State → City → Area dynamic dropdown selection.
+  - Dedicated SEO landing pages for Categories (`/category/{slug}`), Cities (`/city/{slug}`), and City + Category combinations (`/city/{city_slug}/category/{category_slug}`).
+- **User Dashboard**:
+  - Manage active, sold, and inactive ads.
+  - Track inquiries received from buyers.
+  - Save favorite listings.
+- **Admin Control Center (`/admin`)**:
+  - Manage all marketplace listings (edit, change status, toggle featured, manage photo galleries, delete).
+  - Manage users and grant/revoke admin access.
+  - Manage categories and subcategories.
+  - Manage cities (popular city flags) and areas.
+  - Manage customer inquiries.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Demo Credentials
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Role | Email | Password | Access |
+|---|---|---|---|
+| **Administrator** | `admin@marketplace.com` | `password123` | Full Admin Center (`/admin`) + Frontend |
+| **Verified Seller** | `rahul@example.com` | `password123` | User Dashboard & Ad Posting |
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Getting Started
 
-## Agentic Development
+### Option 1: Run with Docker Compose (Recommended)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
+#### 1. Clone the repository
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/ritik2407/marketplace.git
+cd marketplace
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+#### 2. Environment Setup
+```bash
+cp .env.example .env
+```
 
-## Contributing
+#### 3. Build & Start Docker Containers
+```bash
+docker compose up -d --build
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+#### 4. Run Setup Commands inside the App Container
+```bash
+# Install PHP dependencies
+docker compose exec app composer install
 
-## Code of Conduct
+# Generate application key
+docker compose exec app php artisan key:generate
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Run database migrations and seed realistic sample data
+docker compose exec app php artisan migrate --seed
 
-## Security Vulnerabilities
+# Create storage symlink for uploaded ad photos
+docker compose exec app php artisan storage:link
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Install and build frontend assets
+docker compose exec app npm install
+docker compose exec app npm run build
+```
+
+#### 5. Open in Browser
+- **Marketplace Web App**: [http://localhost:8000](http://localhost:8000)
+- **Admin Portal**: [http://localhost:8000/admin](http://localhost:8000/admin)
+
+To stop the containers:
+```bash
+docker compose down
+```
+
+---
+
+### Option 2: Run Locally (Without Docker)
+
+#### Prerequisites
+- PHP 8.3+ with extensions: `pdo_mysql`, `mbstring`, `gd`, `zip`, `bcmath`, `intl`
+- MySQL 8.0+
+- Composer 2+
+- Node.js 20+ & npm
+
+#### 1. Install Dependencies
+```bash
+composer install
+npm install
+```
+
+#### 2. Configure Environment
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+Edit `.env` with your local MySQL credentials:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=marketplace
+DB_USERNAME=root
+DB_PASSWORD=your_password
+```
+
+#### 3. Run Migrations & Seeders
+```bash
+php artisan migrate --seed
+php artisan storage:link
+```
+
+#### 4. Compile Assets & Start Development Server
+In one terminal:
+```bash
+npm run dev
+```
+
+In a second terminal:
+```bash
+php artisan serve --port=8000
+```
+
+Access the app at [http://localhost:8000](http://localhost:8000).
+
+---
+
+## Production / Nginx Reverse Proxy with SSL
+
+If deploying behind a host Nginx reverse proxy with SSL (e.g. Let's Encrypt / Certbot), proxy traffic to the Docker container port (`8000`):
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com www.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    client_max_body_size 25M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+}
+```
+
+---
+
+## Running Automated Tests
+
+Run the PHPUnit feature and unit test suite:
+```bash
+php artisan test
+```
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
