@@ -1,0 +1,16 @@
+.git
+.github
+.agents
+.claude
+node_modules
+vendor
+.phpunit.result.cache
+storage/*.key
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*.log
+.env.backup
+.env.production
+.DS_Store
+Thumbs.db
