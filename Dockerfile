@@ -47,6 +47,15 @@ COPY docker/php/local.ini /usr/local/etc/php/conf.d/local.ini
 # Set working directory
 WORKDIR /var/www
 
+# Copy application files
+COPY . /var/www
+
+# Install Composer packages
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader || true
+
+# Install NPM packages and compile production assets
+RUN npm install && npm run build || true
+
 # Copy entrypoint
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
